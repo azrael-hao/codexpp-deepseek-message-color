@@ -1,7 +1,7 @@
 {
   "id": "deepseek-message-color",
   "name": "Dream Skin theme optimizer",
-  "version": "2.1.8",
+  "version": "2.1.9",
   "repository": "azrael-hao/codexpp-deepseek-message-color",
   "description": "Adapt chat colors and controls to any active Dream Skin, show the docked sidebar divider, and fix duplicate paint and joined edges without flattening the theme's own shape.",
   "engines": {

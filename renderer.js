@@ -7,6 +7,7 @@ codexPlus.extension((ctx) => {
   const main = 'main[data-app-shell-main-surface]';
   const footer = '[data-thread-scroll-footer]';
   const homeComposer = '[data-codex-composer-root][data-composer-placement="home"]';
+  const pageContent = `:is(${homeComposer}, ${footer})`;
   const threadComposer = `${active} ${footer} [data-codex-composer-root][data-composer-placement="thread"]`;
   const stackedControls = `${threadComposer} [data-composer-surface-variant="default"] [data-composer-footer-responsive][data-composer-layout="multiline"][data-composer-rows="stacked"][data-composer-spacing="default"]`;
   const chat = `${workspace}:has(> ${activePage} ${main} ${footer})`;
@@ -14,9 +15,10 @@ codexPlus.extension((ctx) => {
   const docked = '[data-app-shell-frame][data-app-shell-sidebar-open="true"][data-app-shell-responsive-sidebar="false"][data-app-shell-docking-peek="false"]';
   const sidebar = 'aside.app-shell-left-panel';
   const dockedPanel = `${docked} [data-app-shell-workspace-row] > ${workspace} > ${sidebar}`;
-  const dockedSidebar = `${windows} ${docked} [data-app-shell-workspace-row] > ${chat} > ${sidebar}`;
-  const windowsHome = `${windows} ${docked}:has(${activePage} ${main} ${homeComposer})`;
-  const windowsHomeSidebar = `${windowsHome} :is([data-app-shell-workspace-row], [data-app-shell-workspace-row] > ${workspace}) > ${sidebar}`;
+  const windowsWorkspace = `${workspace}:has(> ${activePage} ${main} ${pageContent})`;
+  const windowsDocked = `${windows} ${docked}:has(${activePage} ${main} ${pageContent})`;
+  const macDocked = `${mac} ${docked}:has(${activePage} ${main} ${pageContent})`;
+  const sidebarSlot = `:is([data-app-shell-workspace-row], [data-app-shell-workspace-row] > ${workspace}) > ${sidebar}`;
   const resizeHandle = '[role="separator"][aria-orientation="vertical"]';
   const resizeLine = ".sidebar-resize-handle-line";
   const backing = '[data-app-shell-surface-backing]';
@@ -60,25 +62,29 @@ codexPlus.extension((ctx) => {
           &::before, &::after { background: transparent !important; }
         }
 
-        ${mac} ${dockedPanel},
-        ${mac} ${docked} ${activePage} header[data-app-shell-titlebar] {
+        /* Use the thread scrim colors on Home while retaining the skin's own alpha settings. */
+        ${active}:is([data-codex-os="darwin"], [data-codex-os="win32"])[data-dream-art-wide="true"]:is(
+          [data-dream-task-mode="ambient"], [data-dream-task-mode="banner"],
+          [data-dream-art-task-mode="ambient"], [data-dream-art-task-mode="banner"]
+        ):has(${activePage} ${main} ${homeComposer}) {
+          --ds-immersive-sidebar: var(--ds-task-immersive-sidebar) !important;
+          --ds-immersive-edge: var(--ds-task-immersive-edge) !important;
+          --ds-immersive-mid: var(--ds-task-immersive-mid) !important;
+          --ds-immersive-far: var(--ds-task-immersive-far) !important;
+        }
+
+        ${macDocked} ${sidebarSlot},
+        ${macDocked} ${activePage} header[data-app-shell-titlebar],
+        ${windowsDocked} ${activePage} ${main}:has(${pageContent}),
+        ${windowsDocked} ${activePage} header[data-app-shell-titlebar] {
           border-start-start-radius: 0 !important;
           border-end-start-radius: 0 !important;
         }
-
-        /* Home places the native menu above the workspace and can mount its sidebar in either shell slot. */
-        ${windowsHomeSidebar} {
+        ${windowsDocked} ${sidebarSlot} {
           margin-block-start: 0 !important;
           border-radius: 0 !important;
         }
-        ${windowsHome} ${activePage} ${main}:has(${homeComposer}) {
-          border-start-start-radius: 0 !important;
-          border-end-start-radius: 0 !important;
-        }
-        ${windowsHome} ${activePage} header[data-app-shell-titlebar] {
-          border-start-start-radius: 0 !important;
-          border-end-start-radius: 0 !important;
-
+        ${windowsDocked} ${activePage} header[data-app-shell-titlebar] {
           &::after { content: none !important; }
           & [data-app-shell-header-slot="start"] { background: transparent !important; }
         }
@@ -217,29 +223,16 @@ codexPlus.extension((ctx) => {
     const near = (a, b) => Math.abs(a - b) <= 1;
     const hasBorder = (s, edge) => !!s && parseFloat(s[`borderInline${edge}Width`]) > 0
       && readColor(s[`borderInline${edge}Color`])?.[3] > 0;
-    const hasCustomSidebarRadius = (element) => {
-      const skin = window.__CODEX_DREAM_SKIN_STATE__;
-      const layers = skin?.styleSheet?.cssRules ?? skin?.styleNode?.sheet?.cssRules ?? [];
-      for (const layer of layers) {
-        if (layer.name !== "dreamskin-community") continue;
-        for (const rule of layer.cssRules) {
-          if (!rule.selectorText || !element.matches(rule.selectorText)) continue;
-          const radius = rule.style.getPropertyValue("border-radius").trim();
-          if (radius === "var(--ds-theme-surface-radius)") continue;
-          if (radius || [...rule.style].some((prop) => /^border-.*-radius$/.test(prop))) return true;
-        }
-      }
-      return false;
-    };
-
     let last = [];
     const refreshLayout = (force = false) => {
       if (!root.matches(active)) {
         last = [];
         return setRules(layout, "");
       }
+      const inWindowsMenu = root.matches(windows);
+      const content = inWindowsMenu ? pageContent : footer;
       const page = [...document.querySelectorAll(`${workspace} > ${activePage}`)]
-        .find((el) => el.querySelector(`${main} ${footer}`)?.getBoundingClientRect().width > 0);
+        .find((el) => el.querySelector(`${main} ${content}`)?.getBoundingClientRect().width > 0);
       const area = page?.querySelector(main);
       const row = area?.querySelector(footer)?.parentElement;
       const shell = page?.parentElement ?? [...document.querySelectorAll(dockedPanel)]
@@ -254,7 +247,7 @@ codexPlus.extension((ctx) => {
       const back = shell.querySelector(`:scope > ${backing}`);
       const head = page?.querySelector(titlebar);
       const pinned = !!shell.closest(docked);
-      const signature = [area, row, side, line, neighbor, back, head, pinned, window.__CODEX_DREAM_SKIN_STATE__?.styleRevision,
+      const signature = [area, row, side, line, neighbor, back, head, pinned, inWindowsMenu, window.__CODEX_DREAM_SKIN_STATE__?.styleRevision,
         root.getAttribute("data-theme"), root.getAttribute("data-dream-task-mode")];
       if (!force && signature.every((value, i) => value === last[i])) return;
       last = signature;
@@ -280,15 +273,14 @@ codexPlus.extension((ctx) => {
             }
           `);
         }
-        if (!area || !row) return setRules(layout, css.join("\n"));
+        if (!area) return setRules(layout, css.join("\n"));
 
         const a = area.getBoundingClientRect();
         const mainStyle = neighborStyle;
         const paint = uniformPaint(mainStyle);
-        const inWindowsMenu = root.matches(windows);
-        const after = getComputedStyle(row, "::after");
-        const fade = readColor(after.backgroundColor);
-        if (after.content !== "none" && samePaint(paint, fade) && fade[3] > 57) {
+        const after = row && getComputedStyle(row, "::after");
+        const fade = after && readColor(after.backgroundColor);
+        if (after && after.content !== "none" && samePaint(paint, fade) && fade[3] > 57) {
           const tint = `rgb(from ${after.backgroundColor} r g b / .22)`;
           css.push(`${active} ${chat} [data-ds-part="thread"] > div:has(> ${footer} [data-composer-body]) {
             &::before, &::after { --color-surface: ${tint}; }
@@ -300,7 +292,7 @@ codexPlus.extension((ctx) => {
             const bs = getComputedStyle(back);
             if (near(a.left, b.left) && near(a.top, b.top) && near(a.right, b.right) && near(a.bottom, b.bottom)
                 && samePaint(paint, uniformPaint(bs))) {
-              css.push(`@layer properties { ${windows} ${chat} > ${backing} {
+              css.push(`@layer properties { ${windows} ${windowsWorkspace} > ${backing} {
                 background: none !important;
                 &::after { box-shadow: none !important; }
               } }`);
@@ -311,32 +303,12 @@ codexPlus.extension((ctx) => {
             if (near(a.left, h.left) && near(a.top, h.top) && h.right <= a.right + 1 && h.bottom <= a.bottom
                 && samePaint(paint, uniformPaint(getComputedStyle(head)))) {
               css.push(`@layer properties {
-                ${windows} ${chat} > ${activePage} ${titlebar}:has(+ div > ${main} ${footer}) {
+                ${windows} ${windowsWorkspace} > ${activePage} ${titlebar} {
                   background: none !important;
                 }
               }`);
             }
           }
-        }
-        if (inWindowsMenu && pinned && side) {
-          const s = sideStyle;
-          const b = side.getBoundingClientRect();
-          const margin = parseFloat(s.marginTop);
-          const align = head && margin > 0 && side.style.marginTop === "var(--app-shell-titlebar-height)"
-            && near(b.top - margin, head.getBoundingClientRect().top) && near(b.right, a.left);
-          const joined = paint && samePaint(paint, uniformPaint(s)) && near(b.right, a.left)
-            && !hasDivider && s.boxShadow === "none" && ["none", "blur(0px)"].includes(s.backdropFilter)
-            && !hasCustomSidebarRadius(side);
-          const repairs = [];
-          if (align) repairs.push("margin-top: 0 !important;");
-          // Only meeting edges of a continuous surface should be square; leave the theme's outer corners alone.
-          if (joined && near(b.top - (align ? margin : 0), a.top) && parseFloat(mainStyle.borderTopLeftRadius) === 0) {
-            repairs.push("border-top-right-radius: 0 !important;");
-          }
-          if (joined && near(b.bottom, a.bottom) && parseFloat(mainStyle.borderBottomLeftRadius) === 0) {
-            repairs.push("border-bottom-right-radius: 0 !important;");
-          }
-          if (repairs.length) css.push(`@layer properties { ${dockedSidebar} { ${repairs.join(" ")} } }`);
         }
       } finally {
         if (sheet) sheet.disabled = false;
