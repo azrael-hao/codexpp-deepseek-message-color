@@ -1,11 +1,15 @@
 codexPlus.extension((ctx) => {
   const active = 'html[data-dream-skin="active"]';
+  const mac = `${active}[data-codex-os="darwin"]`;
   const windows = `${active}[data-codex-os="win32"][data-codex-window-chrome="application-menu"]`;
   const workspace = '[data-app-shell-workspace]';
   const activePage = '[data-app-shell-active-page="true"]';
   const main = 'main[data-app-shell-main-surface]';
   const footer = '[data-thread-scroll-footer]';
+  const threadComposer = `${active} ${footer} [data-codex-composer-root][data-composer-placement="thread"]`;
+  const stackedControls = `${threadComposer} [data-composer-surface-variant="default"] [data-composer-footer-responsive][data-composer-layout="multiline"][data-composer-rows="stacked"][data-composer-spacing="default"]`;
   const chat = `${workspace}:has(> ${activePage} ${main} ${footer})`;
+  const macChatFrame = `${mac} [data-app-shell-page-surface]:has(${workspace} > ${activePage} ${main} ${footer})`;
   const docked = '[data-app-shell-frame][data-app-shell-sidebar-open="true"][data-app-shell-responsive-sidebar="false"][data-app-shell-docking-peek="false"]';
   const sidebar = 'aside.app-shell-left-panel';
   const dockedPanel = `${docked} [data-app-shell-workspace-row] > ${workspace} > ${sidebar}`;
@@ -47,6 +51,43 @@ codexPlus.extension((ctx) => {
       }
 
       @layer properties {
+        /* The composer already paints its own surface over full-width artwork. */
+        ${active}[data-dream-art-wide="true"]:is([data-dream-task-mode="ambient"], [data-dream-task-mode="banner"])
+        [data-ds-part="thread"] > div.pointer-events-none:has(> ${footer} [data-thread-composer-backdrop] [data-composer-body]) {
+          &::before, &::after { background: transparent !important; }
+        }
+
+        ${mac} ${dockedPanel},
+        ${mac} ${docked} ${activePage} header[data-app-shell-titlebar] {
+          border-start-start-radius: 0 !important;
+          border-end-start-radius: 0 !important;
+        }
+
+        ${macChatFrame} {
+          padding-block-end: 0 !important;
+        }
+        ${macChatFrame} ${chat} > ${activePage} ${main} {
+          border-block-end-width: 0 !important;
+        }
+
+        ${stackedControls} {
+          background: transparent !important;
+          padding-inline: 12px !important;
+          padding-block-end: 6px !important;
+          margin-block-end: 0 !important;
+          border: 0 !important;
+        }
+        ${stackedControls} :is([data-composer-leading-controls], [data-composer-trailing-controls]) :is(button, [role="button"]) {
+          border-radius: 10px !important;
+        }
+        ${stackedControls} [data-composer-input-layout] {
+          --composer-editor-padding: 0 16px;
+        }
+
+        ${threadComposer} [data-composer-rail-item][data-composer-rail-placement="above"][data-composer-rail-framed] .text-codex-description {
+          color: var(--ds-muted) !important;
+        }
+
         ${active} [data-ds-part="composer"]
         :is(.composer-attachment-surface, [data-composer-attachments-scroll-container])
         button.bg-neutral-solid.text-neutral-solid {

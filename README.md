@@ -11,6 +11,7 @@ Download the extension ZIP from the repository's Releases page and import it as 
 - Applies theme-aware colors to outgoing message bubbles, attachment removal controls, keyboard focus, and the Windows application menu bar.
 - Shows the native docked sidebar divider by default when the theme does not already draw one. The native resize handle remains usable.
 - Reduces overlapping tint only when the underlying and overlaid surfaces match. Preserves custom gradients and corner styles, and squares off only the shared inner edges of a continuous surface.
+- Clears the thread footer's white overlay over full-width theme art, adds space to the editor and toolbar, and applies the theme's muted text color to the goal bar.
 
 The extension only applies while Dream Skin is active. Disable it in Codex++ to return to the theme's unmodified appearance. It does not access chat data or make network requests.
 
