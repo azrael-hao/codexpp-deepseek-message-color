@@ -9,6 +9,7 @@ Download the extension ZIP from the repository's Releases page and import it as 
 ## What It Changes
 
 - Applies theme-aware colors to outgoing message bubbles, attachment removal controls, keyboard focus, and the Windows application menu bar.
+- Gives final assistant replies a theme-colored frosted background that adjusts its opacity for contrast. Explicit skin styling takes precedence.
 - Shows the native docked sidebar divider by default when the theme does not already draw one. The native resize handle remains usable.
 - Uses the conversation backdrop treatment on Home and applies the same docked sidebar and shell corner treatment on both pages in macOS and Windows.
 - Reduces overlapping tint when the underlying and overlaid surfaces match.

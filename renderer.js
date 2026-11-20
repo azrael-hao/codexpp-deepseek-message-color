@@ -6,6 +6,7 @@ codexPlus.extension((ctx) => {
   const activePage = '[data-app-shell-active-page="true"]';
   const main = 'main[data-app-shell-main-surface]';
   const footer = '[data-thread-scroll-footer]';
+  const finalReply = `:where(${active} [data-local-conversation-final-assistant="true"][data-ds-part="message"])`;
   const homeComposer = '[data-codex-composer-root][data-composer-placement="home"]';
   const pageContent = `:is(${homeComposer}, ${footer})`;
   const threadComposer = `${active} ${footer} [data-codex-composer-root][data-composer-placement="thread"]`;
@@ -37,6 +38,20 @@ codexPlus.extension((ctx) => {
   const inkFor = (paint, preferred, minimum = 4.5) => preferred && contrast(paint, preferred) >= minimum
     ? preferred
     : contrast(paint, black) > contrast(paint, white) ? black : white;
+  const replySurface = (ink, panel, alternate) => {
+    // Check both extremes of the wallpaper before allowing transparency.
+    for (const alpha of [0.76, 0.84, 0.92, 1]) {
+      for (const tint of [panel, alternate]) {
+        if ([black, white].every((background) => contrast(mix(background, tint, alpha), ink) >= 4.5)) {
+          return [tint, alpha];
+        }
+      }
+    }
+    const neutral = inkFor(ink, null);
+    const tint = [0.25, 0.5, 0.75, 1].map((weight) => mix(panel, neutral, weight))
+      .find((color) => contrast(color, ink) >= 4.5);
+    return [tint, 1];
+  };
 
   ctx.effect(() => {
     const root = document.documentElement;
@@ -52,6 +67,18 @@ codexPlus.extension((ctx) => {
         :where(${active} [data-user-message-bubble].bg-user-message) {
           --color-background-user-message: var(--dream-opt-bubble, var(--ds-panel-2));
           --color-text-user-message: var(--dream-opt-bubble-ink, var(--ds-text));
+        }
+
+        ${finalReply} {
+          background-color: rgb(var(--dream-opt-reply-rgb) / var(--dream-opt-reply-alpha));
+          backdrop-filter: blur(12px);
+        }
+
+        @media (prefers-reduced-transparency: reduce) {
+          ${finalReply} {
+            background-color: rgb(var(--dream-opt-reply-rgb));
+            backdrop-filter: none;
+          }
         }
       }
 
@@ -178,6 +205,7 @@ codexPlus.extension((ctx) => {
       const bubbleInk = inkFor(alt, text);
       const bubbleAlpha = [black, white].every((background) => contrast(mix(background, alt, 0.9), bubbleInk) >= 4.5)
         ? 0.9 : 1;
+      const [replyTint, replyAlpha] = replySurface(text, panel, alt);
       const removeInk = inkFor(text, null);
       const hover = mix(text, removeInk, 0.16);
       const nearOpposite = removeInk === white ? black : white;
@@ -194,6 +222,8 @@ codexPlus.extension((ctx) => {
         `--color-ring: ${rgb(inkFor(panel, text, 3))} !important;`,
         `--dream-opt-bubble: rgb(${alt.slice(0, 3).join(" ")} / ${bubbleAlpha});`,
         `--dream-opt-bubble-ink: ${rgb(bubbleInk)};`,
+        `--dream-opt-reply-rgb: ${replyTint.slice(0, 3).join(" ")};`,
+        `--dream-opt-reply-alpha: ${replyAlpha};`,
         `--dream-opt-remove-ink: ${rgb(removeInk)};`,
         `--dream-opt-remove-rim: ${rgb(contrast(text, alt) >= 3 ? alt : removeInk)};`,
         `--dream-opt-remove-hover: ${rgb(contrast(hover, removeInk) >= 4.5 ? hover : mix(text, nearOpposite, 0.22))};`,
