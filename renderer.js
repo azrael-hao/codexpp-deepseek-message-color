@@ -6,6 +6,7 @@ codexPlus.extension((ctx) => {
   const activePage = '[data-app-shell-active-page="true"]';
   const main = 'main[data-app-shell-main-surface]';
   const footer = '[data-thread-scroll-footer]';
+  const homeComposer = '[data-codex-composer-root][data-composer-placement="home"]';
   const threadComposer = `${active} ${footer} [data-codex-composer-root][data-composer-placement="thread"]`;
   const stackedControls = `${threadComposer} [data-composer-surface-variant="default"] [data-composer-footer-responsive][data-composer-layout="multiline"][data-composer-rows="stacked"][data-composer-spacing="default"]`;
   const chat = `${workspace}:has(> ${activePage} ${main} ${footer})`;
@@ -14,6 +15,8 @@ codexPlus.extension((ctx) => {
   const sidebar = 'aside.app-shell-left-panel';
   const dockedPanel = `${docked} [data-app-shell-workspace-row] > ${workspace} > ${sidebar}`;
   const dockedSidebar = `${windows} ${docked} [data-app-shell-workspace-row] > ${chat} > ${sidebar}`;
+  const windowsHome = `${windows} ${docked}:has(${activePage} ${main} ${homeComposer})`;
+  const windowsHomeSidebar = `${windowsHome} :is([data-app-shell-workspace-row], [data-app-shell-workspace-row] > ${workspace}) > ${sidebar}`;
   const resizeHandle = '[role="separator"][aria-orientation="vertical"]';
   const resizeLine = ".sidebar-resize-handle-line";
   const backing = '[data-app-shell-surface-backing]';
@@ -61,6 +64,23 @@ codexPlus.extension((ctx) => {
         ${mac} ${docked} ${activePage} header[data-app-shell-titlebar] {
           border-start-start-radius: 0 !important;
           border-end-start-radius: 0 !important;
+        }
+
+        /* Home places the native menu above the workspace and can mount its sidebar in either shell slot. */
+        ${windowsHomeSidebar} {
+          margin-block-start: 0 !important;
+          border-radius: 0 !important;
+        }
+        ${windowsHome} ${activePage} ${main}:has(${homeComposer}) {
+          border-start-start-radius: 0 !important;
+          border-end-start-radius: 0 !important;
+        }
+        ${windowsHome} ${activePage} header[data-app-shell-titlebar] {
+          border-start-start-radius: 0 !important;
+          border-end-start-radius: 0 !important;
+
+          &::after { content: none !important; }
+          & [data-app-shell-header-slot="start"] { background: transparent !important; }
         }
 
         ${macChatFrame} {
